@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables
+.env
+.env.local
+
+# Database and Logs
+data/threads.db
+data/chroma_db/
+logs/
+*.log
+
+# Next.js / Frontend
+phase4_frontend/node_modules/
+phase4_frontend/.next/
+phase4_frontend/out/
+phase4_frontend/build/
+phase4_frontend/.pnp.*
+phase4_frontend/.yarn/*
+!phase4_frontend/.yarn/patches
+!phase4_frontend/.yarn/plugins
+!phase4_frontend/.yarn/releases
+!phase4_frontend/.yarn/sdks
+!phase4_frontend/.yarn/versions
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
