@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ChatPage() {
     const [threads, setThreads] = useState([]);
@@ -142,8 +142,8 @@ export default function ChatPage() {
                             <div
                                 key={t.thread_id}
                                 className={`flex items-center justify-between gap-2 rounded-lg cursor-pointer transition-all py-2 px-3 ${t.thread_id === activeThreadId
-                                        ? "bg-indigo-500/10 text-indigo-400 border-l-2 border-indigo-500"
-                                        : "text-slate-500 hover:text-slate-300 hover:bg-white/3"
+                                    ? "bg-indigo-500/10 text-indigo-400 border-l-2 border-indigo-500"
+                                    : "text-slate-500 hover:text-slate-300 hover:bg-white/3"
                                     }`}
                             >
                                 <button onClick={() => switchThread(t.thread_id)} className="text-xs truncate flex-grow text-left cursor-pointer">
