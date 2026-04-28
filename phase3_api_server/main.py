@@ -95,10 +95,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow Streamlit frontend (default port 8501)
+# CORS — explicitly whitelist the deployed Vercel UI and local instances
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8501",
+        "https://milestone2-neon.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
