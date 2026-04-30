@@ -12,11 +12,8 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from phase1_data_ingestion.config import (
-    CHROMA_CLOUD_ENDPOINT,
-    CHROMA_CLOUD_API_KEY,
-    CHROMA_TENANT,
-    CHROMA_DATABASE,
-    CHROMA_COLLECTION_NAME
+    CHROMA_PERSIST_DIR,
+    CHROMA_COLLECTION_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,10 +22,9 @@ _collection = None
 
 
 def _get_collection():
-    """Get or create the ChromaDB collection using the hosted Cloud client.
-    
-    Caches the client and collection globally so the 4-step auth handshake
-    (identity → tenant → database → collection) only happens once per process.
+    """Get or create the local persistent ChromaDB collection.
+
+    Caches the collection globally so the client is only initialised once per process.
     """
     global _collection
     if _collection is not None:
@@ -39,21 +35,15 @@ def _get_collection():
     except ImportError:
         raise ImportError("chromadb not installed. Run: pip install chromadb")
 
-    if not CHROMA_CLOUD_API_KEY:
-        raise ValueError("CHROMA_CLOUD_API_KEY is not set. Please configure it in .env")
-
-    logger.info("Establishing ChromaDB Cloud connection (one-time)...")
-    client = chromadb.CloudClient(
-        tenant=CHROMA_TENANT,
-        database=CHROMA_DATABASE,
-        api_key=CHROMA_CLOUD_API_KEY,
-        cloud_host=CHROMA_CLOUD_ENDPOINT
-    )
+    import os
+    os.makedirs(CHROMA_PERSIST_DIR, exist_ok=True)
+    logger.info(f"Opening local ChromaDB at {CHROMA_PERSIST_DIR} (one-time)...")
+    client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
     _collection = client.get_or_create_collection(
         name=CHROMA_COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},
     )
-    logger.info("✅ ChromaDB Cloud connection cached.")
+    logger.info("✅ Local ChromaDB collection ready.")
     return _collection
 
 

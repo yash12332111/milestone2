@@ -86,10 +86,10 @@ async def lifespan(app: FastAPI):
     get_model()
     logger.info("✅ Embedding model pre-loaded.")
 
-    # Pre-warm ChromaDB Cloud connection so the first query skips auth (~5s saved)
+    # Open the local ChromaDB collection once so the first query isn't slow
     from phase1_data_ingestion.ingestion.vector_store import _get_collection
     _get_collection()
-    logger.info("✅ ChromaDB connection pre-warmed.")
+    logger.info("✅ Local ChromaDB collection pre-warmed.")
 
     yield
     close_db()

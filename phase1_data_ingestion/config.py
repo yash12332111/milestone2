@@ -22,12 +22,9 @@ LLM_MAX_TOKENS = 250
 EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"
 
 # ---------------------------------------------------------------------------
-# ChromaDB (Cloud)
+# ChromaDB (Local persistent)
 # ---------------------------------------------------------------------------
-CHROMA_CLOUD_ENDPOINT = os.getenv("CHROMA_CLOUD_ENDPOINT", "api.trychroma.com")
-CHROMA_CLOUD_API_KEY = os.getenv("CHROMA_CLOUD_API_KEY", "")
-CHROMA_TENANT = os.getenv("CHROMA_TENANT", "default_tenant")
-CHROMA_DATABASE = os.getenv("CHROMA_DATABASE", "default_database")
+CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "chroma_db"))
 CHROMA_COLLECTION_NAME = "mutual_fund_facts"
 
 # ---------------------------------------------------------------------------
