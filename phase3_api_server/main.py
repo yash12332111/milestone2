@@ -19,6 +19,7 @@ import os
 # Ensure project root is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,10 +87,22 @@ async def lifespan(app: FastAPI):
     get_model()
     logger.info("✅ Embedding model pre-loaded.")
 
-    # Pre-warm ChromaDB Cloud connection so the first query skips auth (~5s saved)
+    # Open the local ChromaDB collection once so the first query isn't slow
     from phase1_data_ingestion.ingestion.vector_store import _get_collection
-    _get_collection()
-    logger.info("✅ ChromaDB connection pre-warmed.")
+    collection = _get_collection()
+    logger.info("✅ Local ChromaDB collection pre-warmed.")
+
+    # Auto-ingest if the collection is empty (fresh deploy or first run)
+    if collection.count() == 0:
+        logger.info("📭 Collection is empty — starting background ingestion...")
+        def _background_ingest():
+            try:
+                from phase1_data_ingestion.ingestion.run_pipeline import run_ingestion_pipeline
+                run_ingestion_pipeline()
+                logger.info("✅ Background ingestion complete.")
+            except Exception as exc:
+                logger.error(f"❌ Background ingestion failed: {exc}")
+        threading.Thread(target=_background_ingest, daemon=True).start()
 
     yield
     close_db()
@@ -110,10 +123,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8501",
         "https://milestone2-neon.vercel.app"
     ],
+    allow_origin_regex=r"http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

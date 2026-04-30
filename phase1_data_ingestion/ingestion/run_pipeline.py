@@ -38,22 +38,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_ingestion_pipeline() -> None:
+def run_ingestion_pipeline() -> int:
     """
     Full pipeline: scrape → chunk → embed → upsert.
-    Each step logs progress. Failures at the URL level are isolated.
+    Returns the number of active chunks in the vector store.
+    Raises RuntimeError on unrecoverable failures so callers (e.g. the API
+    endpoint or startup background thread) can handle them without exiting.
     """
     logger.info("=" * 60)
     logger.info("STARTING INGESTION PIPELINE")
     logger.info("=" * 60)
 
     # Step 1: Scrape all target URLs
-    logger.info("Step 1/4: Scraping target URLs...")
+    logger.info("Step 1/5: Scraping target URLs...")
     scraped_data = scrape_all_urls()
 
     if not scraped_data:
-        logger.error("No data scraped. Pipeline aborted.")
-        sys.exit(1)
+        raise RuntimeError("No data scraped — pipeline aborted.")
 
     logger.info(f"Scraped {len(scraped_data)} URLs successfully.")
 
@@ -66,16 +67,15 @@ def run_ingestion_pipeline() -> None:
     logger.info(f"Saved raw scraped data to {raw_path}")
 
     # Step 2: Chunk the scraped data
-    logger.info("Step 2/4: Chunking scraped data...")
+    logger.info("Step 2/5: Chunking scraped data...")
     chunks = chunk_scraped_data(scraped_data)
     logger.info(f"Created {len(chunks)} chunks total.")
 
     if not chunks:
-        logger.error("No chunks created. Pipeline aborted.")
-        sys.exit(1)
+        raise RuntimeError("No chunks created — pipeline aborted.")
 
     # Step 3: Embed all chunks
-    logger.info("Step 3/4: Embedding chunks via OpenAI...")
+    logger.info("Step 3/5: Embedding chunks...")
     embedded_chunks = embed_chunks(chunks)
     logger.info(f"Embedded {len(embedded_chunks)} chunks.")
 
@@ -83,17 +83,24 @@ def run_ingestion_pipeline() -> None:
     logger.info("Step 4/5: Upserting to ChromaDB...")
     total = upsert_to_chroma(embedded_chunks)
 
-    # Step 5: Clean up old data chunks
-    logger.info("Step 5/5: Running retention policy (keeping 1 day of safety data)...")
+    # Step 5: Clean up stale chunks
+    logger.info("Step 5/5: Running retention policy (keeping 1 day of data)...")
     deleted = cleanup_old_chunks(days_to_keep=1)
 
+    active = total - deleted
     logger.info("=" * 60)
     logger.info("PIPELINE COMPLETE")
     logger.info(f"Chunks upserted: {len(embedded_chunks)}")
-    logger.info(f"Chunks deleted: {deleted}")
-    logger.info(f"Total chunks active in vector store: {total - deleted}")
+    logger.info(f"Chunks deleted (stale): {deleted}")
+    logger.info(f"Total active in vector store: {active}")
     logger.info("=" * 60)
+    return active
 
 
 if __name__ == "__main__":
-    run_ingestion_pipeline()
+    import sys
+    try:
+        run_ingestion_pipeline()
+    except RuntimeError as e:
+        logger.error(str(e))
+        sys.exit(1)
