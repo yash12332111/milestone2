@@ -21,9 +21,19 @@ from phase1_data_ingestion.config import (
 
 logger = logging.getLogger(__name__)
 
+_collection = None
+
 
 def _get_collection():
-    """Get or create the ChromaDB collection using the hosted Cloud client."""
+    """Get or create the ChromaDB collection using the hosted Cloud client.
+    
+    Caches the client and collection globally so the 4-step auth handshake
+    (identity → tenant → database → collection) only happens once per process.
+    """
+    global _collection
+    if _collection is not None:
+        return _collection
+
     try:
         import chromadb
     except ImportError:
@@ -32,17 +42,19 @@ def _get_collection():
     if not CHROMA_CLOUD_API_KEY:
         raise ValueError("CHROMA_CLOUD_API_KEY is not set. Please configure it in .env")
 
+    logger.info("Establishing ChromaDB Cloud connection (one-time)...")
     client = chromadb.CloudClient(
         tenant=CHROMA_TENANT,
         database=CHROMA_DATABASE,
         api_key=CHROMA_CLOUD_API_KEY,
         cloud_host=CHROMA_CLOUD_ENDPOINT
     )
-    collection = client.get_or_create_collection(
+    _collection = client.get_or_create_collection(
         name=CHROMA_COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},
     )
-    return collection
+    logger.info("✅ ChromaDB Cloud connection cached.")
+    return _collection
 
 
 def upsert_to_chroma(chunks: list[dict]) -> int:

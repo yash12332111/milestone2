@@ -80,6 +80,17 @@ rag_logger.propagate = False
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Mutual Fund FAQ Assistant API starting up...")
+
+    # Pre-warm the embedding model so the first query isn't slow (~13s saved)
+    from phase1_data_ingestion.ingestion.embedder import get_model
+    get_model()
+    logger.info("✅ Embedding model pre-loaded.")
+
+    # Pre-warm ChromaDB Cloud connection so the first query skips auth (~5s saved)
+    from phase1_data_ingestion.ingestion.vector_store import _get_collection
+    _get_collection()
+    logger.info("✅ ChromaDB connection pre-warmed.")
+
     yield
     close_db()
     logger.info("🛑 API shutting down. Database connection closed.")
