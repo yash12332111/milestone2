@@ -14,7 +14,7 @@ jobs:
       - name: Wake up Render service
         run: |
           echo "Pinging health endpoint to wake Render free-tier service..."
-          for i in $(seq 1 6); do
+          for i in $(seq 1 10); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
               https://fundfacts-api.onrender.com/health --max-time 30)
             echo "Attempt $i: HTTP $STATUS"

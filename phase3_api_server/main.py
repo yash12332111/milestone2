@@ -19,6 +19,7 @@ import os
 # Ensure project root is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import asyncio
 import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
@@ -233,10 +234,15 @@ async def api_chat(thread_id: str, body: ChatRequest):
 # ---------------------------------------------------------------------------
 @app.post("/admin/ingest", status_code=200)
 async def api_trigger_ingest():
-    """Manually trigger the data ingestion pipeline."""
+    """Manually trigger the data ingestion pipeline.
+
+    Runs the pipeline in a thread executor so the event loop stays free to
+    serve health checks while the long-running scrape+embed job is in progress.
+    """
+    from phase1_data_ingestion.ingestion.run_pipeline import run_ingestion_pipeline
     try:
-        from phase1_data_ingestion.ingestion.run_pipeline import run_ingestion_pipeline
-        total = run_ingestion_pipeline()
+        loop = asyncio.get_event_loop()
+        total = await loop.run_in_executor(None, run_ingestion_pipeline)
         return {"detail": f"Ingestion complete. {total} chunks in vector store."}
     except Exception as e:
         logger.error(f"Ingestion pipeline error: {e}")
