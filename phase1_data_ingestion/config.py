@@ -19,7 +19,7 @@ LLM_MAX_TOKENS = 250
 # ---------------------------------------------------------------------------
 # Embedding (local HuggingFace model — no API key needed)
 # ---------------------------------------------------------------------------
-EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 # ---------------------------------------------------------------------------
 # ChromaDB (Local persistent)
