@@ -97,6 +97,52 @@ def run_ingestion_pipeline() -> int:
     return active
 
 
+def ingest_from_file(file_path: str | None = None) -> int:
+    """Chunk → embed → upsert from a pre-scraped JSON file.
+
+    Use this on hosts where playwright is unavailable (e.g. Render).
+    GitHub Actions scrapes and commits the JSON; this function picks it up.
+    """
+    if file_path is None:
+        file_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "data", "scraped_data.json",
+        )
+
+    logger.info("=" * 60)
+    logger.info("STARTING FILE-BASED INGESTION")
+    logger.info("=" * 60)
+
+    if not os.path.exists(file_path):
+        raise RuntimeError(f"Scraped data file not found: {file_path}")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        scraped_data = json.load(f)
+
+    if not scraped_data:
+        raise RuntimeError("Scraped data file is empty — ingestion aborted.")
+
+    logger.info(f"Loaded {len(scraped_data)} records from {file_path}")
+
+    logger.info("Step 1/3: Chunking...")
+    chunks = chunk_scraped_data(scraped_data)
+    if not chunks:
+        raise RuntimeError("No chunks created — ingestion aborted.")
+    logger.info(f"Created {len(chunks)} chunks.")
+
+    logger.info("Step 2/3: Embedding...")
+    embedded_chunks = embed_chunks(chunks)
+    logger.info(f"Embedded {len(embedded_chunks)} chunks.")
+
+    logger.info("Step 3/3: Upserting to ChromaDB...")
+    total = upsert_to_chroma(embedded_chunks)
+
+    logger.info("=" * 60)
+    logger.info(f"FILE-BASED INGESTION COMPLETE — {total} chunks in store")
+    logger.info("=" * 60)
+    return total
+
+
 if __name__ == "__main__":
     import sys
     try:

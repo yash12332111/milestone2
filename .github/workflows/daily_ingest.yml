@@ -6,37 +6,42 @@ on:
   workflow_dispatch:          # Manual trigger button in GitHub UI
 
 jobs:
-  ingest:
+  scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
-      - name: Wake up Render service
-        run: |
-          echo "Pinging health endpoint to wake Render free-tier service..."
-          for i in $(seq 1 10); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              https://fundfacts-api.onrender.com/health --max-time 30)
-            echo "Attempt $i: HTTP $STATUS"
-            if [ "$STATUS" = "200" ]; then
-              echo "Service is up."
-              break
-            fi
-            echo "Not ready yet — waiting 30s..."
-            sleep 30
-          done
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Trigger ingestion pipeline on Render
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright Browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run Scraper
+        run: python -c "
+          from phase1_data_ingestion.scraper.scraper import scrape_all_urls
+          import json, os
+          data = scrape_all_urls()
+          os.makedirs('data', exist_ok=True)
+          with open('data/scraped_data.json', 'w') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+          print(f'Scraped {len(data)} URLs')
+          "
+
+      - name: Commit Scraped Data
         run: |
-          echo "Calling /admin/ingest ..."
-          RESPONSE=$(curl -s -X POST https://fundfacts-api.onrender.com/admin/ingest \
-            --max-time 900 \
-            -H "Content-Type: application/json" \
-            -w "\n---HTTP_STATUS:%{http_code}")
-          echo "$RESPONSE"
-          HTTP_CODE=$(echo "$RESPONSE" | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "Ingestion failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          echo "Ingestion succeeded."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/scraped_data.json || true
+          git diff --cached --quiet || git commit -m "chore: daily knowledge base refresh $(date +%Y-%m-%d)"
+          git push

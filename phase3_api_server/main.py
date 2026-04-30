@@ -93,13 +93,13 @@ async def lifespan(app: FastAPI):
     collection = _get_collection()
     logger.info("✅ Local ChromaDB collection pre-warmed.")
 
-    # Auto-ingest if the collection is empty (fresh deploy or first run)
+    # Auto-ingest from scraped_data.json if the collection is empty (fresh deploy)
     if collection.count() == 0:
-        logger.info("📭 Collection is empty — starting background ingestion...")
+        logger.info("📭 Collection is empty — starting background ingestion from file...")
         def _background_ingest():
             try:
-                from phase1_data_ingestion.ingestion.run_pipeline import run_ingestion_pipeline
-                run_ingestion_pipeline()
+                from phase1_data_ingestion.ingestion.run_pipeline import ingest_from_file
+                ingest_from_file()
                 logger.info("✅ Background ingestion complete.")
             except Exception as exc:
                 logger.error(f"❌ Background ingestion failed: {exc}")
@@ -234,15 +234,15 @@ async def api_chat(thread_id: str, body: ChatRequest):
 # ---------------------------------------------------------------------------
 @app.post("/admin/ingest", status_code=200)
 async def api_trigger_ingest():
-    """Manually trigger the data ingestion pipeline.
+    """Re-ingest from data/scraped_data.json (chunk → embed → upsert).
 
-    Runs the pipeline in a thread executor so the event loop stays free to
-    serve health checks while the long-running scrape+embed job is in progress.
+    Runs in a thread executor so the event loop stays free to serve health
+    checks while the long-running embed job is in progress.
     """
-    from phase1_data_ingestion.ingestion.run_pipeline import run_ingestion_pipeline
+    from phase1_data_ingestion.ingestion.run_pipeline import ingest_from_file
     try:
         loop = asyncio.get_event_loop()
-        total = await loop.run_in_executor(None, run_ingestion_pipeline)
+        total = await loop.run_in_executor(None, ingest_from_file)
         return {"detail": f"Ingestion complete. {total} chunks in vector store."}
     except Exception as e:
         logger.error(f"Ingestion pipeline error: {e}")
