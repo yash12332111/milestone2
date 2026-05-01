@@ -1,11 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ChatPage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen items-center justify-center" style={{ background: "#030f1c" }}><span className="text-slate-500 text-sm">Loading...</span></div>}>
+            <ChatContent />
+        </Suspense>
+    );
+}
+
+function ChatContent() {
+    const searchParams = useSearchParams();
     const [threads, setThreads] = useState([]);
     const [activeThreadId, setActiveThreadId] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -13,8 +23,18 @@ export default function ChatPage() {
     const [loading, setLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const messagesEndRef = useRef(null);
+    const initialQuerySent = useRef(false);
 
     useEffect(() => { fetchThreads(); }, []);
+
+    // Handle ?q= parameter - auto-send the query
+    useEffect(() => {
+        const q = searchParams.get("q");
+        if (q && !initialQuerySent.current) {
+            initialQuerySent.current = true;
+            sendMessage(q);
+        }
+    }, [searchParams]);
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
     async function fetchThreads() {

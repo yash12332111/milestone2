@@ -83,22 +83,27 @@ rag_logger.propagate = False
 async def lifespan(app: FastAPI):
     logger.info("🚀 Mutual Fund FAQ Assistant API starting up...")
 
-    # Open ChromaDB collection (fast — no model download needed)
+    # Pre-warm the embedding model so the first query isn't slow (~13s saved)
+    from phase1_data_ingestion.ingestion.embedder import get_model
+    get_model()
+    logger.info("✅ Embedding model pre-loaded.")
+
+    # Open the local ChromaDB collection once so the first query isn't slow
     from phase1_data_ingestion.ingestion.vector_store import _get_collection
     collection = _get_collection()
-    logger.info("✅ ChromaDB collection ready.")
+    logger.info("✅ Local ChromaDB collection pre-warmed.")
 
-    # Auto-ingest from scraped_data.json on empty collection (fresh deploy)
+    # Auto-ingest if the collection is empty (fresh deploy or first run)
     if collection.count() == 0:
-        logger.info("📭 Collection is empty — ingesting from scraped_data.json in background...")
-        def _ingest():
+        logger.info("📭 Collection is empty — starting background ingestion...")
+        def _background_ingest():
             try:
-                from phase1_data_ingestion.ingestion.run_pipeline import ingest_from_file
-                ingest_from_file()
-                logger.info("✅ Ingestion complete.")
+                from phase1_data_ingestion.ingestion.run_pipeline import run_ingestion_pipeline
+                run_ingestion_pipeline()
+                logger.info("✅ Background ingestion complete.")
             except Exception as exc:
-                logger.error(f"❌ Ingestion failed: {exc}")
-        threading.Thread(target=_ingest, daemon=True).start()
+                logger.error(f"❌ Background ingestion failed: {exc}")
+        threading.Thread(target=_background_ingest, daemon=True).start()
 
     yield
     close_db()
@@ -229,15 +234,15 @@ async def api_chat(thread_id: str, body: ChatRequest):
 # ---------------------------------------------------------------------------
 @app.post("/admin/ingest", status_code=200)
 async def api_trigger_ingest():
-    """Re-ingest from data/scraped_data.json (chunk → embed → upsert).
+    """Manually trigger the data ingestion pipeline.
 
-    Runs in a thread executor so the event loop stays free to serve health
-    checks while the long-running embed job is in progress.
+    Runs the pipeline in a thread executor so the event loop stays free to
+    serve health checks while the long-running scrape+embed job is in progress.
     """
-    from phase1_data_ingestion.ingestion.run_pipeline import ingest_from_file
+    from phase1_data_ingestion.ingestion.run_pipeline import run_ingestion_pipeline
     try:
         loop = asyncio.get_event_loop()
-        total = await loop.run_in_executor(None, ingest_from_file)
+        total = await loop.run_in_executor(None, run_ingestion_pipeline)
         return {"detail": f"Ingestion complete. {total} chunks in vector store."}
     except Exception as e:
         logger.error(f"Ingestion pipeline error: {e}")

@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from phase1_data_ingestion.config import LOG_LEVEL
 from phase1_data_ingestion.scraper.scraper import scrape_all_urls
 from phase1_data_ingestion.ingestion.chunker import chunk_scraped_data
+from phase1_data_ingestion.ingestion.embedder import embed_chunks
 from phase1_data_ingestion.ingestion.vector_store import upsert_to_chroma, cleanup_old_chunks
 
 # Setup logging
@@ -73,64 +74,27 @@ def run_ingestion_pipeline() -> int:
     if not chunks:
         raise RuntimeError("No chunks created — pipeline aborted.")
 
-    # Step 3: Upsert into ChromaDB (embedding done by ChromaDB's ONNX function)
-    logger.info("Step 3/4: Upserting to ChromaDB...")
-    total = upsert_to_chroma(chunks)
+    # Step 3: Embed all chunks
+    logger.info("Step 3/5: Embedding chunks...")
+    embedded_chunks = embed_chunks(chunks)
+    logger.info(f"Embedded {len(embedded_chunks)} chunks.")
 
-    # Step 4: Clean up stale chunks
-    logger.info("Step 4/4: Running retention policy (keeping 1 day of data)...")
+    # Step 4: Upsert into ChromaDB
+    logger.info("Step 4/5: Upserting to ChromaDB...")
+    total = upsert_to_chroma(embedded_chunks)
+
+    # Step 5: Clean up stale chunks
+    logger.info("Step 5/5: Running retention policy (keeping 1 day of data)...")
     deleted = cleanup_old_chunks(days_to_keep=1)
 
     active = total - deleted
     logger.info("=" * 60)
     logger.info("PIPELINE COMPLETE")
-    logger.info(f"Chunks upserted: {len(chunks)}")
+    logger.info(f"Chunks upserted: {len(embedded_chunks)}")
     logger.info(f"Chunks deleted (stale): {deleted}")
     logger.info(f"Total active in vector store: {active}")
     logger.info("=" * 60)
     return active
-
-
-def ingest_from_file(file_path: str | None = None) -> int:
-    """Chunk → embed → upsert from a pre-scraped JSON file.
-
-    Use this on hosts where playwright is unavailable (e.g. Render).
-    GitHub Actions scrapes and commits the JSON; this function picks it up.
-    """
-    if file_path is None:
-        file_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "data", "scraped_data.json",
-        )
-
-    logger.info("=" * 60)
-    logger.info("STARTING FILE-BASED INGESTION")
-    logger.info("=" * 60)
-
-    if not os.path.exists(file_path):
-        raise RuntimeError(f"Scraped data file not found: {file_path}")
-
-    with open(file_path, "r", encoding="utf-8") as f:
-        scraped_data = json.load(f)
-
-    if not scraped_data:
-        raise RuntimeError("Scraped data file is empty — ingestion aborted.")
-
-    logger.info(f"Loaded {len(scraped_data)} records from {file_path}")
-
-    logger.info("Step 1/2: Chunking...")
-    chunks = chunk_scraped_data(scraped_data)
-    if not chunks:
-        raise RuntimeError("No chunks created — ingestion aborted.")
-    logger.info(f"Created {len(chunks)} chunks.")
-
-    logger.info("Step 2/2: Upserting to ChromaDB (embedding via ONNX)...")
-    total = upsert_to_chroma(chunks)
-
-    logger.info("=" * 60)
-    logger.info(f"FILE-BASED INGESTION COMPLETE — {total} chunks in store")
-    logger.info("=" * 60)
-    return total
 
 
 if __name__ == "__main__":

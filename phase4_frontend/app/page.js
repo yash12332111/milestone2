@@ -1,11 +1,18 @@
+"use client";
+
 import Header from "./components/Header";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
   const feedItems = [
-    { icon: "history_edu", time: "Updated 4m ago", name: "HDFC Large Cap Fund (HDFC-LC)", desc: "Expense ratio verified at 1.74%. NAV tracking Nifty 100 benchmark.", score: 92.4, pct: 92 },
-    { icon: "bolt", time: "Critical Insight", name: "HDFC ELSS Tax Saver Fund (HDFC-ELSS)", desc: "Lock-in period: 3 years. Min SIP ₹500. Tax benefit under 80C confirmed.", score: 88.1, pct: 88 },
-    { icon: "query_stats", time: "Archived 2h ago", name: "HDFC Mid-Cap Opportunities Fund", desc: "Standard quarter-end audit completed. Exit load 1% within 1 year verified.", score: 99.8, pct: 99, faded: true },
+    { icon: "history_edu", time: "Updated 4m ago", name: "HDFC Large Cap Fund (HDFC-LC)", desc: "Expense ratio verified at 1.74%. NAV tracking Nifty 100 benchmark.", score: 92.4, pct: 92, query: "What is the expense ratio and NAV of HDFC Large Cap Fund?" },
+    { icon: "bolt", time: "Critical Insight", name: "HDFC ELSS Tax Saver Fund (HDFC-ELSS)", desc: "Lock-in period: 3 years. Min SIP ₹500. Tax benefit under 80C confirmed.", score: 88.1, pct: 88, query: "Tell me about HDFC ELSS Tax Saver Fund lock-in period and tax benefits" },
+    { icon: "query_stats", time: "Archived 2h ago", name: "HDFC Mid-Cap Opportunities Fund", desc: "Standard quarter-end audit completed. Exit load 1% within 1 year verified.", score: 99.8, pct: 99, faded: true, query: "What is the exit load for HDFC Mid-Cap Opportunities Fund?" },
   ];
 
   const stats = [
@@ -13,6 +20,13 @@ export default function Home() {
     { value: "12.4K", label: "Queries Processed", icon: "analytics" },
     { value: "99.7%", label: "Data Accuracy", icon: "shield" },
   ];
+
+  function handleSearch(e) {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/chat?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }
 
   return (
     <div className="editorial-gradient min-h-screen relative overflow-hidden">
@@ -43,7 +57,7 @@ export default function Home() {
           </p>
 
           {/* Command Center Search */}
-          <div className="animate-fade-up animate-fade-up-d3 w-full max-w-3xl">
+          <form onSubmit={handleSearch} className="animate-fade-up animate-fade-up-d3 w-full max-w-3xl">
             <div className="relative group">
               <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-indigo-500/30 via-purple-500/20 to-indigo-500/30 opacity-0 group-focus-within:opacity-100 transition-opacity duration-500 blur-sm"></div>
               <div className="relative glass-panel rounded-2xl p-2 flex items-center">
@@ -54,20 +68,22 @@ export default function Home() {
                   className="bg-transparent border-none focus:ring-0 w-full text-base text-white placeholder:text-slate-500 py-4 outline-none"
                   placeholder="Search funds, sectors, or enter a prompt for AI analysis..."
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <div className="hidden sm:flex items-center space-x-1.5 px-4">
                   <kbd className="px-2 py-1 bg-white/5 rounded-md border border-white/10 text-[10px] text-slate-500 font-mono">⌘</kbd>
                   <kbd className="px-2 py-1 bg-white/5 rounded-md border border-white/10 text-[10px] text-slate-500 font-mono">K</kbd>
                 </div>
-                <Link
-                  href="/chat"
-                  className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold text-xs px-8 py-3.5 rounded-xl transition-all mr-1 whitespace-nowrap shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold text-xs px-8 py-3.5 rounded-xl transition-all mr-1 whitespace-nowrap shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 cursor-pointer"
                 >
                   ANALYZE →
-                </Link>
+                </button>
               </div>
             </div>
-          </div>
+          </form>
 
           {/* Stats Row */}
           <div className="animate-fade-up animate-fade-up-d4 flex flex-wrap justify-center gap-12 mt-16">
@@ -87,7 +103,7 @@ export default function Home() {
         <div className="glow-line w-full max-w-md mx-auto mb-24 opacity-50"></div>
 
         {/* ═══ BENTO GRID ═══ */}
-        <section className="mb-28">
+        <section id="categories" className="mb-28 scroll-mt-24">
           <div className="text-center mb-14">
             <span className="text-[10px] text-indigo-400 uppercase tracking-[0.3em] font-semibold">Asset Intelligence</span>
             <h2 className="font-[Newsreader] text-3xl md:text-4xl mt-3 text-white">Explore by Category</h2>
@@ -95,7 +111,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Equity */}
-            <Link href="/chat" className="glass-panel-hover p-7 rounded-2xl group cursor-pointer relative overflow-hidden">
+            <Link href="/explore#equity" className="glass-panel-hover p-7 rounded-2xl group cursor-pointer relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-8">
@@ -105,7 +121,7 @@ export default function Home() {
                   <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">+2.4%</span>
                 </div>
                 <h3 className="font-[Newsreader] text-2xl mb-2 text-white group-hover:text-indigo-200 transition-colors">Equity</h3>
-                <p className="text-sm text-slate-400 mb-8 leading-relaxed">Growth-focused algorithmic assessment of global large-cap holdings.</p>
+                <p className="text-sm text-slate-400 mb-8 leading-relaxed">Growth-focused large-cap and mid-cap equity funds with strong track records.</p>
                 <div className="h-20 w-full relative overflow-hidden rounded-xl bg-gradient-to-r from-indigo-950/50 to-slate-950/30">
                   <svg className="w-full h-full chart-glow" viewBox="0 0 400 80" preserveAspectRatio="none">
                     <defs>
@@ -122,7 +138,7 @@ export default function Home() {
             </Link>
 
             {/* Debt */}
-            <Link href="/chat" className="glass-panel-hover p-7 rounded-2xl group cursor-pointer relative overflow-hidden">
+            <Link href="/explore#debt" className="glass-panel-hover p-7 rounded-2xl group cursor-pointer relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-8">
@@ -132,7 +148,7 @@ export default function Home() {
                   <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">AAA</span>
                 </div>
                 <h3 className="font-[Newsreader] text-2xl mb-2 text-white group-hover:text-blue-200 transition-colors">Debt</h3>
-                <p className="text-sm text-slate-400 mb-8 leading-relaxed">Fixed income intelligence and credit risk modeling across jurisdictions.</p>
+                <p className="text-sm text-slate-400 mb-8 leading-relaxed">Fixed income funds with focus on capital preservation and steady returns.</p>
                 <div className="h-20 w-full relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-950/50 to-slate-950/30">
                   <svg className="w-full h-full" viewBox="0 0 400 80" preserveAspectRatio="none">
                     {[30, 90, 150, 210, 270, 330].map((x, i) => (
@@ -145,7 +161,7 @@ export default function Home() {
             </Link>
 
             {/* Hybrid */}
-            <Link href="/chat" className="glass-panel-hover p-7 rounded-2xl group cursor-pointer relative overflow-hidden">
+            <Link href="/explore#hybrid" className="glass-panel-hover p-7 rounded-2xl group cursor-pointer relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-8">
@@ -155,7 +171,7 @@ export default function Home() {
                   <span className="text-[10px] px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">HEDGED</span>
                 </div>
                 <h3 className="font-[Newsreader] text-2xl mb-2 text-white group-hover:text-purple-200 transition-colors">Hybrid</h3>
-                <p className="text-sm text-slate-400 mb-8 leading-relaxed">Multi-asset volatility tracking and algorithmic rebalancing strategies.</p>
+                <p className="text-sm text-slate-400 mb-8 leading-relaxed">Multi-asset balanced funds for optimal risk-adjusted returns.</p>
                 <div className="h-20 w-full relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-950/50 to-slate-950/30">
                   <svg className="w-full h-full" viewBox="0 0 400 80" preserveAspectRatio="none">
                     <defs>
@@ -175,7 +191,7 @@ export default function Home() {
         </section>
 
         {/* ═══ EDITORIAL INSIGHT ═══ */}
-        <section className="mb-28 relative">
+        <section id="insights" className="mb-28 relative scroll-mt-24">
           <div className="glass-panel rounded-2xl p-10 md:p-14 relative overflow-hidden">
             {/* Accent bar */}
             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 via-purple-500 to-transparent"></div>
@@ -188,11 +204,11 @@ export default function Home() {
                   <span className="material-symbols-outlined text-indigo-400 text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
                   <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-[0.2em]">AI Editorial Insight</span>
                 </div>
-                <h2 className="font-[Newsreader] text-3xl md:text-4xl mb-6 text-white leading-tight">The Shift in Emerging Market Sentiment</h2>
+                <h2 className="font-[Newsreader] text-3xl md:text-4xl mb-6 text-white leading-tight">HDFC Fund Performance Overview</h2>
                 <p className="text-base text-slate-400 leading-relaxed mb-8">
-                  Our intelligence engine has detected a non-linear correlation between localized interest rate pivots and institutional capital flows within the APAC sector. Fund transparency metrics are now outperforming raw yield expectations.
+                  Our intelligence engine analyzes key metrics across all HDFC mutual fund schemes on Groww — including expense ratios, NAV trends, exit loads, and SIP minimums — to provide you with verified, factual insights.
                 </p>
-                <Link href="/chat" className="inline-flex items-center gap-2 text-indigo-400 text-xs font-semibold hover:text-indigo-300 transition-all group/link">
+                <Link href="/chat?q=Give me an overview of HDFC mutual fund schemes available on Groww" className="inline-flex items-center gap-2 text-indigo-400 text-xs font-semibold hover:text-indigo-300 transition-all group/link">
                   <span>READ FULL ANALYSIS</span>
                   <span className="material-symbols-outlined text-sm group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
                 </Link>
@@ -201,14 +217,14 @@ export default function Home() {
               {/* Capital Flow Card */}
               <div className="bg-slate-900/60 rounded-2xl p-6 border border-white/5 shadow-2xl shadow-indigo-500/5">
                 <div className="flex justify-between items-center mb-8">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-semibold">Capital Flow Index</span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-semibold">Fund Category Distribution</span>
                   <span className="material-symbols-outlined text-slate-600 text-lg">info</span>
                 </div>
                 <div className="space-y-6">
                   {[
-                    { label: "North America", pct: 75, color: "bg-indigo-400" },
-                    { label: "Eurozone", pct: 42, color: "bg-blue-400" },
-                    { label: "APAC Sector", pct: 89, color: "bg-indigo-400", glow: true },
+                    { label: "Equity Funds", pct: 75, color: "bg-indigo-400" },
+                    { label: "Debt Funds", pct: 42, color: "bg-blue-400" },
+                    { label: "Hybrid Funds", pct: 89, color: "bg-purple-400", glow: true },
                   ].map(item => (
                     <div key={item.label}>
                       <div className="flex items-center justify-between mb-2">
@@ -230,21 +246,21 @@ export default function Home() {
         </section>
 
         {/* ═══ INTELLIGENCE FEED ═══ */}
-        <section className="mb-28">
+        <section id="feed" className="mb-28 scroll-mt-24">
           <div className="flex items-end justify-between mb-10">
             <div>
               <span className="text-[10px] text-indigo-400 uppercase tracking-[0.3em] font-semibold">Verified Data</span>
               <h2 className="font-[Newsreader] text-3xl md:text-4xl mt-2 text-white">Recent Intelligence</h2>
             </div>
-            <Link href="/chat" className="hidden md:inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-indigo-400 transition-colors group/all">
-              <span>VIEW ALL</span>
+            <Link href="/explore" className="hidden md:inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-indigo-400 transition-colors group/all">
+              <span>VIEW ALL FUNDS</span>
               <span className="material-symbols-outlined text-sm group-hover/all:translate-x-1 transition-transform">arrow_forward</span>
             </Link>
           </div>
 
           <div className="space-y-4">
             {feedItems.map((item, idx) => (
-              <Link href="/chat" key={item.name}
+              <Link href={`/chat?q=${encodeURIComponent(item.query)}`} key={item.name}
                 className={`glass-panel-hover p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between group cursor-pointer ${item.faded ? "opacity-60" : ""}`}
               >
                 <div className="flex items-start space-x-5 mb-4 md:mb-0">
@@ -289,17 +305,17 @@ export default function Home() {
           <div>
             <h5 className="text-[10px] font-semibold text-slate-400 mb-5 uppercase tracking-[0.2em]">Platform</h5>
             <ul className="space-y-3 text-sm">
-              <li><Link href="/chat" className="text-slate-500 hover:text-indigo-400 transition-colors">Market Intelligence</Link></li>
-              <li><Link href="/chat" className="text-slate-500 hover:text-indigo-400 transition-colors">Portfolio Benchmarking</Link></li>
-              <li><Link href="/chat" className="text-slate-500 hover:text-indigo-400 transition-colors">Sector Insight Feed</Link></li>
+              <li><Link href="/chat" className="text-slate-500 hover:text-indigo-400 transition-colors">AI Intelligence Terminal</Link></li>
+              <li><Link href="/explore" className="text-slate-500 hover:text-indigo-400 transition-colors">Explore Funds</Link></li>
+              <li><a href="#feed" className="text-slate-500 hover:text-indigo-400 transition-colors">Recent Insights</a></li>
             </ul>
           </div>
           <div>
-            <h5 className="text-[10px] font-semibold text-slate-400 mb-5 uppercase tracking-[0.2em]">Legal</h5>
+            <h5 className="text-[10px] font-semibold text-slate-400 mb-5 uppercase tracking-[0.2em]">Quick Queries</h5>
             <ul className="space-y-3 text-sm">
-              <li><a className="text-slate-500 hover:text-indigo-400 transition-colors" href="#">Institutional Terms</a></li>
-              <li><a className="text-slate-500 hover:text-indigo-400 transition-colors" href="#">Privacy Ledger</a></li>
-              <li><a className="text-slate-500 hover:text-indigo-400 transition-colors" href="#">Compliance</a></li>
+              <li><Link href="/chat?q=What are the best HDFC equity funds?" className="text-slate-500 hover:text-indigo-400 transition-colors">Best Equity Funds</Link></li>
+              <li><Link href="/chat?q=Compare HDFC debt funds by expense ratio" className="text-slate-500 hover:text-indigo-400 transition-colors">Compare Debt Funds</Link></li>
+              <li><Link href="/chat?q=Which HDFC funds have the lowest exit load?" className="text-slate-500 hover:text-indigo-400 transition-colors">Lowest Exit Load</Link></li>
             </ul>
           </div>
         </div>
