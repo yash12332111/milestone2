@@ -83,27 +83,27 @@ rag_logger.propagate = False
 async def lifespan(app: FastAPI):
     logger.info("🚀 Mutual Fund FAQ Assistant API starting up...")
 
-    # Pre-warm the embedding model so the first query isn't slow (~13s saved)
-    from phase1_data_ingestion.ingestion.embedder import get_model
-    get_model()
-    logger.info("✅ Embedding model pre-loaded.")
+    # Run all heavy initialization in a background thread so uvicorn binds
+    # to the port immediately and Render's health checks pass.
+    def _warmup():
+        from phase1_data_ingestion.ingestion.embedder import get_model
+        get_model()
+        logger.info("✅ Embedding model pre-loaded.")
 
-    # Open the local ChromaDB collection once so the first query isn't slow
-    from phase1_data_ingestion.ingestion.vector_store import _get_collection
-    collection = _get_collection()
-    logger.info("✅ Local ChromaDB collection pre-warmed.")
+        from phase1_data_ingestion.ingestion.vector_store import _get_collection
+        collection = _get_collection()
+        logger.info("✅ Local ChromaDB collection pre-warmed.")
 
-    # Auto-ingest from scraped_data.json if the collection is empty (fresh deploy)
-    if collection.count() == 0:
-        logger.info("📭 Collection is empty — starting background ingestion from file...")
-        def _background_ingest():
+        if collection.count() == 0:
+            logger.info("📭 Collection is empty — ingesting from scraped_data.json...")
             try:
                 from phase1_data_ingestion.ingestion.run_pipeline import ingest_from_file
                 ingest_from_file()
-                logger.info("✅ Background ingestion complete.")
+                logger.info("✅ Ingestion complete.")
             except Exception as exc:
-                logger.error(f"❌ Background ingestion failed: {exc}")
-        threading.Thread(target=_background_ingest, daemon=True).start()
+                logger.error(f"❌ Ingestion failed: {exc}")
+
+    threading.Thread(target=_warmup, daemon=True).start()
 
     yield
     close_db()
