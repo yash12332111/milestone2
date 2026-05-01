@@ -36,11 +36,15 @@ def _get_collection():
         raise ImportError("chromadb not installed. Run: pip install chromadb")
 
     import os
+    from chromadb.utils import embedding_functions
     os.makedirs(CHROMA_PERSIST_DIR, exist_ok=True)
     logger.info(f"Opening local ChromaDB at {CHROMA_PERSIST_DIR} (one-time)...")
     client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
+    # Use ChromaDB's built-in ONNX embedding (all-MiniLM-L6-v2, ~50MB, no PyTorch)
+    ef = embedding_functions.DefaultEmbeddingFunction()
     _collection = client.get_or_create_collection(
         name=CHROMA_COLLECTION_NAME,
+        embedding_function=ef,
         metadata={"hnsw:space": "cosine"},
     )
     logger.info("✅ Local ChromaDB collection ready.")
@@ -62,9 +66,9 @@ def upsert_to_chroma(chunks: list[dict]) -> int:
 
     collection.upsert(
         ids=[chunk["id"] for chunk in chunks],
-        embeddings=[chunk["embedding"] for chunk in chunks],
         documents=[chunk["text"] for chunk in chunks],
         metadatas=[chunk["metadata"] for chunk in chunks],
+        # No embeddings — ChromaDB computes them via its built-in ONNX function
     )
 
     total = collection.count()
@@ -73,7 +77,7 @@ def upsert_to_chroma(chunks: list[dict]) -> int:
 
 
 def query_collection(
-    query_embedding: list[float],
+    query_text: str,
     n_results: int = 5,
     distance_threshold: Optional[float] = None,
 ) -> list[dict]:
@@ -86,7 +90,7 @@ def query_collection(
     collection = _get_collection()
 
     results = collection.query(
-        query_embeddings=[query_embedding],
+        query_texts=[query_text],
         n_results=n_results,
         include=["documents", "metadatas", "distances"],
     )

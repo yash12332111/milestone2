@@ -83,27 +83,22 @@ rag_logger.propagate = False
 async def lifespan(app: FastAPI):
     logger.info("🚀 Mutual Fund FAQ Assistant API starting up...")
 
-    # Run all heavy initialization in a background thread so uvicorn binds
-    # to the port immediately and Render's health checks pass.
-    def _warmup():
-        from phase1_data_ingestion.ingestion.embedder import get_model
-        get_model()
-        logger.info("✅ Embedding model pre-loaded.")
+    # Open ChromaDB collection (fast — no model download needed)
+    from phase1_data_ingestion.ingestion.vector_store import _get_collection
+    collection = _get_collection()
+    logger.info("✅ ChromaDB collection ready.")
 
-        from phase1_data_ingestion.ingestion.vector_store import _get_collection
-        collection = _get_collection()
-        logger.info("✅ Local ChromaDB collection pre-warmed.")
-
-        if collection.count() == 0:
-            logger.info("📭 Collection is empty — ingesting from scraped_data.json...")
+    # Auto-ingest from scraped_data.json on empty collection (fresh deploy)
+    if collection.count() == 0:
+        logger.info("📭 Collection is empty — ingesting from scraped_data.json in background...")
+        def _ingest():
             try:
                 from phase1_data_ingestion.ingestion.run_pipeline import ingest_from_file
                 ingest_from_file()
                 logger.info("✅ Ingestion complete.")
             except Exception as exc:
                 logger.error(f"❌ Ingestion failed: {exc}")
-
-    threading.Thread(target=_warmup, daemon=True).start()
+        threading.Thread(target=_ingest, daemon=True).start()
 
     yield
     close_db()

@@ -12,7 +12,6 @@ import logging
 from typing import Optional
 
 from phase1_data_ingestion.config import RETRIEVER_TOP_K, RETRIEVER_DISTANCE_THRESHOLD
-from phase1_data_ingestion.ingestion.embedder import get_model
 from phase1_data_ingestion.ingestion.vector_store import query_collection
 from phase2_rag_core.prompts import NO_RESULTS_RESPONSE
 
@@ -32,16 +31,10 @@ def retrieve_context(query: str) -> dict:
             "latest_date": str,          # most recent last_updated_date
         }
     """
-    model = get_model()
-
-    # BGE models need "Represent this sentence..." prefix for QUERIES (not documents)
-    prefixed_query = f"Represent this sentence for searching relevant passages: {query}"
-    query_embedding = model.encode(prefixed_query, normalize_embeddings=True).tolist()
-
     logger.info(f"Querying ChromaDB for: '{query[:80]}...'")
 
     results = query_collection(
-        query_embedding=query_embedding,
+        query_text=query,
         n_results=RETRIEVER_TOP_K,
         distance_threshold=RETRIEVER_DISTANCE_THRESHOLD,
     )
