@@ -72,6 +72,16 @@ function ChatContent() {
         } catch (e) { console.error("Failed to delete", e); }
     }
 
+    async function clearAllThreads() {
+        if (!threads.length) return;
+        try {
+            await Promise.all(threads.map(t => fetch(`${API_BASE}/threads/${t.thread_id}`, { method: "DELETE" })));
+            setActiveThreadId(null);
+            setMessages([]);
+            fetchThreads();
+        } catch (e) { console.error("Failed to clear all threads", e); }
+    }
+
     async function sendMessage(query) {
         if (!query.trim()) return;
         let threadId = activeThreadId;
@@ -150,7 +160,19 @@ function ChatContent() {
 
                 {/* Threads */}
                 <div className="mt-6 px-5 flex-1 overflow-y-auto">
-                    <p className="text-[9px] text-slate-600 uppercase tracking-[0.2em] font-semibold mb-3">Recent Sessions</p>
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-[9px] text-slate-600 uppercase tracking-[0.2em] font-semibold">Recent Sessions</p>
+                        {threads.length > 0 && (
+                            <button
+                                onClick={clearAllThreads}
+                                className="text-[9px] text-slate-600 hover:text-red-400 uppercase tracking-[0.15em] transition-colors cursor-pointer flex items-center gap-1"
+                                title="Delete all sessions"
+                            >
+                                <span className="material-symbols-outlined text-[11px]">delete_sweep</span>
+                                Clear all
+                            </button>
+                        )}
+                    </div>
                     <div className="space-y-0.5">
                         {threads.length === 0 && (
                             <div className="py-8 text-center">
@@ -161,9 +183,9 @@ function ChatContent() {
                         {threads.map((t) => (
                             <div
                                 key={t.thread_id}
-                                className={`flex items-center justify-between gap-2 rounded-lg cursor-pointer transition-all py-2 px-3 ${t.thread_id === activeThreadId
+                                className={`group flex items-center justify-between gap-2 rounded-lg cursor-pointer transition-all py-2 px-3 ${t.thread_id === activeThreadId
                                     ? "bg-indigo-500/10 text-indigo-400 border-l-2 border-indigo-500"
-                                    : "text-slate-500 hover:text-slate-300 hover:bg-white/3"
+                                    : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
                                     }`}
                             >
                                 <button onClick={() => switchThread(t.thread_id)} className="text-xs truncate flex-grow text-left cursor-pointer">
