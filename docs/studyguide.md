@@ -543,4 +543,69 @@ python -m phase2_rag_core.pipeline
 
 ---
 
-*Last updated: May 2026 — covers all changes from initial build through Render + Vercel deployment and frontend navigation overhaul.*
+---
+
+## 12. What is RAG — Explained Using This Project
+
+### The Simple Definition
+
+**RAG = Retrieval-Augmented Generation**
+
+Instead of asking the LLM "what's the expense ratio of HDFC Large Cap Fund?" and hoping it knows — you first **fetch the real answer from your own database**, then **hand it to the LLM** and say "answer the user's question using only this." The LLM never guesses. It only reads from your data.
+
+### The Three Steps
+
+**R — Retrieve** → Search ChromaDB for chunks of scraped text relevant to the question
+**A — Augmented** → Attach those chunks to the prompt as context
+**G — Generate** → Send context + question to Groq LLM, get a grounded answer back
+
+### How It Flows in This Project
+
+```
+User asks: "What is the expense ratio of HDFC Large Cap Fund?"
+                        ↓
+         [Guardrails — phase2_rag_core/guardrails.py]
+         Not PII. Not advisory. Passes through.
+                        ↓
+         [Retriever — phase2_rag_core/retriever.py]
+         Converts question → vector → searches ChromaDB
+         Returns top 5 most relevant scraped text chunks
+         Filters out anything with cosine distance > 0.75
+                        ↓
+         [Augmented Prompt — phase2_rag_core/prompts.py]
+         "Here is the context: {scraped chunks}
+          Answer this question using only the above: {user question}"
+                        ↓
+         [Generator — phase2_rag_core/generator.py]
+         Groq LLM reads the context and writes a 3-sentence answer
+         Appends source URL + last updated date
+                        ↓
+"The expense ratio of HDFC Large Cap Fund Direct Growth is 0.98%..."
+Source: https://groww.in/mutual-funds/hdfc-large-cap-fund-direct-growth
+Last updated from sources: 2026-05-02
+```
+
+### Why RAG Instead of Just the LLM?
+
+| Just LLM | RAG (this project) |
+|---|---|
+| Might hallucinate numbers | Answers only from scraped Groww data |
+| Training data could be months old | Data refreshes every morning at 9:15 AM IST |
+| No source citation possible | Always returns the exact Groww URL |
+| Can't control what it says | If it's not in the DB, it says so |
+
+### The Files That Make Up the RAG Pipeline
+
+| File | Role |
+|------|------|
+| `phase1_data_ingestion/ingestion/vector_store.py` | Stores scraped chunks as vectors — the knowledge base |
+| `phase2_rag_core/retriever.py` | The **R** — finds relevant chunks from ChromaDB |
+| `phase2_rag_core/prompts.py` | The **A** — builds the augmented prompt with context injected |
+| `phase2_rag_core/generator.py` | The **G** — calls Groq LLM and formats the final answer |
+| `phase2_rag_core/pipeline.py` | Ties all three steps together into one `process_query()` call |
+
+When someone says "this project uses RAG" — it means the LLM never answers from memory. It always reads from **your data** first, then speaks.
+
+---
+
+*Last updated: May 2026 — covers all changes from initial build through Render + Vercel deployment, frontend navigation overhaul, and RAG explanation.*
